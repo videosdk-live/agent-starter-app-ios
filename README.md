@@ -19,7 +19,7 @@ A starter project for integrating Conversational AI Agents in iOS using VideoSDK
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/videosdk-live/agent-starter-ios.git
+   git clone https://github.com/videosdk-live/agent-starter-app-ios.git
    cd agent-starter-ios
    ```
 
