@@ -15,13 +15,21 @@ A starter project for integrating Conversational AI Agents in iOS using VideoSDK
 1. iOS 18 or later
 2. Xcode 16.4 or later
 
-## Running the project
+## Getting Started
 
-Before running the project, you must set up your credentials.
-Open `agent-starter-ios/Constants/MeetingConfig.swift` (or the respective configuration file) and add the following:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/videosdk-live/agent-starter-ios.git
+   cd agent-starter-ios
+   ```
 
-### Required Configs
-- `AUTH_TOKEN`: Your authorization token.
-- `AGENT_ID`: The ID of the agent to connect.
+2. **Open the project in Xcode:**
+   Open the `agent-starter-ios.xcodeproj` file using Xcode.
 
-Fill these things and run the project from Xcode!
+3. **Set up credentials:**
+   Before running the app, you need to configure your authentication details. Open `agent-starter-ios/Constants/MeetingConfig.swift` and supply the required values:
+   - `AUTH_TOKEN`: Your authorization token.
+   - `AGENT_ID`: The ID of the agent you want to connect to.
+
+4. **Build and Run:**
+   Select your target physical device and click the Run button (or press `Cmd + R`) in Xcode!
