@@ -11,6 +11,8 @@ enum EndPoint {
     case getToken
     case createMeeting(String)
     case validateMeeting(String, String)
+    case dispatchAgent(meetingId: String, agentId: String, versionId: String?, variables: [String: Any]?)
+    case getAgentVersions(agentId: String)
 
     var baseURL: URL {
         URL(string: "https://api.videosdk.live")!
@@ -24,12 +26,16 @@ enum EndPoint {
             return "/v2/rooms"
         case .validateMeeting(let meetingId, _):
             return "/v2/rooms/validate/\(meetingId)"
+        case .dispatchAgent:
+            return "/v2/agent/dispatch"
+        case .getAgentVersions(let agentId):
+            return "/ai/v1/agents/\(agentId)/versions"
         }
     }
 
     var method: String {
         switch self {
-        case .createMeeting, .validateMeeting:
+        case .createMeeting, .validateMeeting, .dispatchAgent:
             return "POST"
         default:
             return "GET"
@@ -38,7 +44,7 @@ enum EndPoint {
 
     var body: Data? {
         switch self {
-        case .getToken:
+        case .getToken, .getAgentVersions:
             return nil
 
         case .createMeeting(let token):
@@ -54,6 +60,24 @@ enum EndPoint {
                 withJSONObject: params,
                 options: []
             )
+
+        case .dispatchAgent(let meetingId, let agentId, let versionId, let variables):
+            var body: [String: Any] = [
+                "meetingId": meetingId,
+                "agentId": agentId,
+            ]
+            if let versionId = versionId, !versionId.isEmpty {
+                body["versionId"] = versionId
+            }
+            if let variables = variables, !variables.isEmpty {
+                body["metadata"] = [
+                    "variables": variables
+                ]
+            }
+            return try? JSONSerialization.data(
+                withJSONObject: body,
+                options: []
+            )
         }
     }
 
@@ -64,6 +88,7 @@ enum EndPoint {
             MeetingConfig.AUTH_TOKEN,
             forHTTPHeaderField: "Authorization"
         )
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
         return request
     }
@@ -131,6 +156,7 @@ class APIService {
         .resume()
     }
 
+    // Updated dispatchAgent with versionId check and chaining
     class func dispatchAgent(
         meetingId: String,
         agentId: String,
@@ -138,111 +164,140 @@ class APIService {
         variables: [String: Any]? = nil,
         completion: @escaping (Result<[String: Any], Error>) -> Void
     ) {
-        guard
-            let url = URL(string: "https://api.videosdk.live/v2/agent/dispatch")
-        else {
-            completion(
-                .failure(
-                    NSError(
-                        domain: "APIServiceError",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "Invalid URL"]
-                    )
-                )
+        // Helper to actually make the dispatchAgent call
+        func performDispatch(with versionIdToUse: String?) {
+            let endpoint = EndPoint.dispatchAgent(
+                meetingId: meetingId,
+                agentId: agentId,
+                versionId: versionIdToUse,
+                variables: variables
             )
-            return
-        }
+            let request = endpoint.request
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(
-            MeetingConfig.AUTH_TOKEN,
-            forHTTPHeaderField: "Authorization"
-        )
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        var body: [String: Any] = [
-            "meetingId": meetingId,
-            "agentId": agentId,
-        ]
-        if versionId != nil {
-            body["versionId"] = versionId ?? ""
-        }
-        if variables != nil && !(variables ?? [:]).isEmpty {
-            body["metadata"] = [
-                "variables": variables ?? [:]
-            ]
-        }
-
-        do {
-            request.httpBody = try JSONSerialization.data(
-                withJSONObject: body,
-                options: []
-            )
-        } catch {
-            completion(.failure(error))
-            return
-        }
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-
-            guard let data = data else {
-                completion(
-                    .failure(
-                        NSError(
-                            domain: "APIServiceError",
-                            code: -1,
-                            userInfo: [
-                                NSLocalizedDescriptionKey: "No data received"
-                            ]
-                        )
-                    )
-                )
-                return
-            }
-
-            let responseDict = data.toJSON()
-            guard let httpResponse = response as? HTTPURLResponse else {
-                completion(
-                    .failure(
-                        NSError(
-                            domain: "APIServiceError",
-                            code: -1,
-                            userInfo: [
-                                NSLocalizedDescriptionKey: "Invalid response"
-                            ]
-                        )
-                    )
-                )
-                return
-            }
-
-            if httpResponse.statusCode == 200 || httpResponse.statusCode == 201
-            {
-                if let dataDict = responseDict["data"] as? [String: Any],
-                    dataDict["success"] as? Bool == true
-                {
-                    completion(.success(responseDict))
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    completion(.failure(error))
                     return
                 }
-            }
 
-            let message =
-                responseDict["message"] as? String
-                ?? "Agent dispatch failed. Please try again."
-            completion(
-                .failure(
-                    NSError(
-                        domain: "APIServiceError",
-                        code: httpResponse.statusCode,
-                        userInfo: [NSLocalizedDescriptionKey: message]
+                guard let data = data else {
+                    completion(
+                        .failure(
+                            NSError(
+                                domain: "APIServiceError",
+                                code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "No data received"]
+                            )
+                        )
+                    )
+                    return
+                }
+
+                let responseDict = data.toJSON()
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    completion(
+                        .failure(
+                            NSError(
+                                domain: "APIServiceError",
+                                code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "Invalid response"]
+                            )
+                        )
+                    )
+                    return
+                }
+
+                if httpResponse.statusCode == 200 || httpResponse.statusCode == 201
+                {
+                    if let dataDict = responseDict["data"] as? [String: Any],
+                        dataDict["success"] as? Bool == true
+                    {
+                        completion(.success(responseDict))
+                        return
+                    }
+                }
+
+                let message =
+                    responseDict["message"] as? String
+                    ?? "Agent dispatch failed. Please try again."
+                completion(
+                    .failure(
+                        NSError(
+                            domain: "APIServiceError",
+                            code: httpResponse.statusCode,
+                            userInfo: [NSLocalizedDescriptionKey: message]
+                        )
                     )
                 )
-            )
+            }.resume()
+        }
+
+        // If versionId is nil or empty, fetch agent versions first
+        if versionId == nil || versionId?.isEmpty == true {
+            getAgentVersions(agentId: agentId) { result in
+                switch result {
+                case .success(let versions):
+                    if let firstVersion = versions.first,
+                       let latestVersionId = firstVersion["versionId"] as? String {
+                        performDispatch(with: latestVersionId)
+                    } else {
+                        completion(
+                            .failure(
+                                NSError(
+                                    domain: "APIServiceError",
+                                    code: -1,
+                                    userInfo: [NSLocalizedDescriptionKey: "No versions found for agent"]
+                                )
+                            )
+                        )
+                    }
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+        } else {
+            performDispatch(with: versionId)
+        }
+    }
+
+    // MARK: - Get Agent Versions
+    class func getAgentVersions(
+        agentId: String,
+        completion: @escaping (Result<[[String: Any]], Error>) -> Void
+    ) {
+        let request = EndPoint.getAgentVersions(agentId: agentId).request
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    completion(.failure(NSError(domain: "APIServiceError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])))
+                    return
+                }
+
+                guard let data = data else {
+                    completion(.failure(NSError(domain: "APIServiceError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data received"])))
+                    return
+                }
+
+                let responseDict = data.toJSON()
+                if httpResponse.statusCode != 200 {
+                    let message = responseDict["message"] as? String ?? "Failed to fetch agent versions"
+                    completion(.failure(NSError(domain: "APIServiceError", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: message])))
+                    return
+                }
+
+                guard let versions = responseDict["versions"] as? [[String: Any]], !versions.isEmpty else {
+                    completion(.failure(NSError(domain: "APIServiceError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No versions found for agent"])))
+                    return
+                }
+
+                completion(.success(versions))
+            }
         }.resume()
     }
 }

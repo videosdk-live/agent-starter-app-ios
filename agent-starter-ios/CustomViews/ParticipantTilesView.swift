@@ -142,18 +142,14 @@ struct ParticipantTilesView: View {
                     ZStack(alignment: .topTrailing) {
                         GifImageView(gifName: "sample_gif")
                             .frame(
-                                width: Responsive.width(250),
-                                height: Responsive.width(250),
+                                width: Responsive.width(190),
+                                height: Responsive.width(190),
                                 alignment: .center
                             )
                             .frame(
                                 width: geometry.size.width,
                                 height: geometry.size.height,
                                 alignment: .center
-                            )
-                            .shadow(
-                                color: AppColors.white,
-                                radius: Responsive.width(70)
                             )
 
                         if controller.localParticipant != nil {

@@ -8,7 +8,7 @@ struct SplashScreen: View {
 
     var body: some View {
         ZStack {
-            AppColors.neutral950
+            AppColors.black
                 .ignoresSafeArea()
 
             if controller.isSuccessfullyDispatched {
@@ -241,15 +241,11 @@ struct SplashScreen: View {
                     ZStack {
                         GifImageView(gifName: "sample_gif")
                             .frame(
-                                width: Responsive.width(250),
-                                height: Responsive.width(250),
+                                width: Responsive.width(190),
+                                height: Responsive.width(190),
                                 alignment: .top
                             )
                             .opacity(controller.isDispatchingAgent ? 0.5 : 1.0)
-                            .shadow(
-                                color: AppColors.white,
-                                radius: Responsive.width(70)
-                            )
                             .blur(radius: controller.isDispatchingAgent ? 4 : 0)
 
                         if controller.isDispatchingAgent {

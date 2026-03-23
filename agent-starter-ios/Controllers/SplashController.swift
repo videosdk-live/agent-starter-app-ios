@@ -70,7 +70,8 @@ class SplashController: ObservableObject {
                             meetingToJoin = meetingId
                             APIService.dispatchAgent(
                                 meetingId: meetingToJoin,
-                                agentId: MeetingConfig.AGENT_ID
+                                agentId: MeetingConfig.AGENT_ID,
+                                versionId: MeetingConfig.VERSION_ID.isEmpty ? nil : MeetingConfig.VERSION_ID
                             ) { result in
                                 if case .success(_) = result {
                                     DispatchQueue.main.async {
@@ -105,7 +106,8 @@ class SplashController: ObservableObject {
             } else {
                 APIService.dispatchAgent(
                     meetingId: meetingToJoin,
-                    agentId: MeetingConfig.AGENT_ID
+                    agentId: MeetingConfig.AGENT_ID,
+                    versionId: MeetingConfig.VERSION_ID.isEmpty ? nil : MeetingConfig.VERSION_ID
                 ) { result in
                     if case .success(_) = result {
                         DispatchQueue.main.async {

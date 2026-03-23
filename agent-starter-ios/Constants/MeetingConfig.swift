@@ -7,6 +7,7 @@
 
 struct MeetingConfig {
     static let MEETING_ID: String = "" // OPTIONAL, If not specified, then it will create new meeting id and proceed.
+    static let VERSION_ID: String = "" // OPTIONAL, If not specified, then it will get the latest verison from AgentId and proceed.
     
     #warning("Please provide AUTH_TOKEN and AGENT_ID to run this project")
     static let AUTH_TOKEN: String = ""
