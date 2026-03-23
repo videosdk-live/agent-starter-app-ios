@@ -31,5 +31,9 @@ A starter project for integrating Conversational AI Agents in iOS using VideoSDK
    - `AUTH_TOKEN`: Your authorization token.
    - `AGENT_ID`: The ID of the agent you want to connect to.
 
+   Also, there are two optional values:
+   - `MEETING_ID`: If not specified, then it will create new meeting id and proceed.
+   - `VERSION_ID`: If not specified, then it will get the latest verison for privided AgentId and proceed witht the latest versionId.
+
 4. **Build and Run:**
    Select your target physical device and click the Run button (or press `Cmd + R`) in Xcode!
