@@ -15,6 +15,20 @@ A starter project for integrating Conversational AI Agents in iOS using VideoSDK
 1. iOS 18 or later
 2. Xcode 16.4 or later
 
+## Create Agent
+
+You can create and configure a powerful AI agent directly from the VideoSDK dashboard — no coding required.
+
+### Step 1: Create Your Agent
+   First, follow our detailed guide to **[Build a Custom Voice AI Agent in Minutes](https://app.videosdk.live/agents/agents)**. This will walk you through creating the agent's persona, configuring its pipeline (Realtime or Cascading), and testing it directly from the dashboard.
+
+### Step 2: Get Agent and Version ID
+   Once your agent is created, you need to get its `agentId` and `versionId` to connect it to your frontend application.
+
+   1. After creating your agent, go to the agent's page and find the JSON editor on the right side. Copy the `agentId`.
+   
+   2. To get the `versionId`, click on the 3 dots beside the Deploy button and click on **"Version History"**. Copy the version ID via the copy button of the version you want.
+
 ## Getting Started
 
 1. **Clone the repository:**
