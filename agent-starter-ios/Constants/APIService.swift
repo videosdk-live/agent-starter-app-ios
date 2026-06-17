@@ -11,7 +11,7 @@ enum EndPoint {
     case getToken
     case createMeeting(String)
     case validateMeeting(String, String)
-    case dispatchAgent(meetingId: String, agentId: String, versionId: String?, variables: [String: Any]?)
+    case dispatchAgent(meetingId: String, agentId: String, versionTag: String?, variables: [String: Any]?)
     case getAgentVersions(agentId: String)
 
     var baseURL: URL {
@@ -61,13 +61,13 @@ enum EndPoint {
                 options: []
             )
 
-        case .dispatchAgent(let meetingId, let agentId, let versionId, let variables):
+        case .dispatchAgent(let meetingId, let agentId, let versionTag, let variables):
             var body: [String: Any] = [
                 "meetingId": meetingId,
                 "agentId": agentId,
             ]
-            if let versionId = versionId, !versionId.isEmpty {
-                body["versionId"] = versionId
+            if let versionTag = versionTag, !versionTag.isEmpty {
+                body["versionTag"] = versionTag
             }
             if let variables = variables, !variables.isEmpty {
                 body["metadata"] = [
@@ -156,20 +156,20 @@ class APIService {
         .resume()
     }
 
-    // Updated dispatchAgent with versionId check and chaining
+    // Updated dispatchAgent with versionTag check and chaining
     class func dispatchAgent(
         meetingId: String,
         agentId: String,
-        versionId: String? = nil,
+        versionTag: String? = nil,
         variables: [String: Any]? = nil,
         completion: @escaping (Result<[String: Any], Error>) -> Void
     ) {
         // Helper to actually make the dispatchAgent call
-        func performDispatch(with versionIdToUse: String?) {
+        func performDispatch(with versionTagToUse: String?) {
             let endpoint = EndPoint.dispatchAgent(
                 meetingId: meetingId,
                 agentId: agentId,
-                versionId: versionIdToUse,
+                versionTag: versionTagToUse,
                 variables: variables
             )
             let request = endpoint.request
@@ -232,32 +232,8 @@ class APIService {
             }.resume()
         }
 
-        // If versionId is nil or empty, fetch agent versions first
-        if versionId == nil || versionId?.isEmpty == true {
-            getAgentVersions(agentId: agentId) { result in
-                switch result {
-                case .success(let versions):
-                    if let firstVersion = versions.first,
-                       let latestVersionId = firstVersion["versionId"] as? String {
-                        performDispatch(with: latestVersionId)
-                    } else {
-                        completion(
-                            .failure(
-                                NSError(
-                                    domain: "APIServiceError",
-                                    code: -1,
-                                    userInfo: [NSLocalizedDescriptionKey: "No versions found for agent"]
-                                )
-                            )
-                        )
-                    }
-                case .failure(let error):
-                    completion(.failure(error))
-                }
-            }
-        } else {
-            performDispatch(with: versionId)
-        }
+
+        performDispatch(with: versionTag)
     }
 
     // MARK: - Get Agent Versions

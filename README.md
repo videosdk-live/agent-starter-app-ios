@@ -22,12 +22,12 @@ You can create and configure a powerful AI agent directly from the VideoSDK dash
 ### Step 1: Create Your Agent
    First, follow our detailed guide to **[Build a Custom Voice AI Agent in Minutes](https://app.videosdk.live/agents/agents)**. This will walk you through creating the agent's persona, configuring its pipeline (Realtime or Cascading), and testing it directly from the dashboard.
 
-### Step 2: Get Agent and Version ID
-   Once your agent is created, you need to get its `agentId` and `versionId` to connect it to your frontend application.
+### Step 2: Get Agent and Version Tag
+   Once your agent is created, you need to get its `agentId to connect it to your frontend application.
 
    1. After creating your agent, go to the agent's page and find the JSON editor on the right side. Copy the `agentId`.
    
-   2. To get the `versionId`, click on the 3 dots beside the Deploy button and click on **"Version History"**. Copy the version ID via the copy button of the version you want.
+   2. To get the `versionTag` which is optional, click on agent name and inside the details view, there is tab named `Branches`, inside the table of branches, you need to click of 3 dots of particular branch of what agent you want to join, and select **See Branch History** option, and you find `versionTag` besides the copy button.
 
 ## Getting Started
 
@@ -47,7 +47,7 @@ You can create and configure a powerful AI agent directly from the VideoSDK dash
 
    Also, there are two optional values:
    - `MEETING_ID`: If not specified, then it will create new meeting id and proceed.
-   - `VERSION_ID`: If not specified, then it will get the latest verison for privided AgentId and proceed witht the latest versionId.
+   - `VERSION_TAG`: If not specified, then it will get the latest commit I for privided AgentId and proceed witht the latest versionId.
 
 4. **Build and Run:**
    Select your target physical device and click the Run button (or press `Cmd + R`) in Xcode!
