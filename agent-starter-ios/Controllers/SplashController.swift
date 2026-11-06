@@ -8,9 +8,7 @@
 import AVFoundation
 import Combine
 import Foundation
-internal import Mediasoup
 import SwiftUI
-import WebRTC
 import VideoSDKRTC
 
 struct AudioDeviceWrapper: Identifiable {
@@ -43,7 +41,7 @@ class SplashController: ObservableObject {
     @Published var activeSpeakerId: String? = nil
 
     @Published var isLocalSmall: Bool = true
-    @Published var meeting: Meeting? = nil
+    @Published var meeting: Room? = nil
     @Published var participants: [String: Participant] = [:]
     @Published var localParticipant: Participant? = nil
     @Published var transcriptionList: [TranscriptItem] = []
@@ -185,8 +183,7 @@ class SplashController: ObservableObject {
 
     func initializeMeeting(meetingId: String) {
         DispatchQueue.main.async {
-            VideoSDK.setLogLevel(level: .all)
-            VideoSDK.config(token: MeetingConfig.AUTH_TOKEN)
+            VideoSDK.setLogLevel(level: .ALL)
 
             VideoSDK.getAudioPermission()
             VideoSDK.getVideoPermission()
@@ -198,15 +195,14 @@ class SplashController: ObservableObject {
                     VideoSDK.getVideoPermissionStatus() == .authorized
             }
 
-            self.meeting = VideoSDK.initMeeting(
-                meetingId: meetingId,
+            self.meeting = try? VideoSDK.createRoom(
+                roomId: meetingId,
+                token: MeetingConfig.AUTH_TOKEN,
                 participantName: "User",
                 micEnabled: true,
-                webcamEnabled: false,
-                customCameraVideoStream: nil,
-                customAudioTrack: nil,
-                multiStream: false,
-                mode: .SEND_AND_RECV
+                camEnabled: false,
+                mode: .SEND_AND_RECV,
+                multiStream: false
             )
 
             self.isMicMuted = false
@@ -218,25 +214,25 @@ class SplashController: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             self.meeting?.addEventListener(self)
             if self.meeting?.id.isEmpty == false {
-                self.meeting?.join()
+                Task { try? await self.meeting?.join() }
             }
         }
     }
 
     func endMeeting() {
-        meeting?.end()
+        Task { [meeting] in try? await meeting?.end() }
         cleanResources()
     }
 
     func startScreenShare() {
         Task {
-            await meeting?.enableScreenShare()
+            try? await meeting?.enableScreenShare()
         }
     }
 
     func stopScreenShare() {
         Task {
-            await meeting?.disableScreenShare()
+            try? await meeting?.disableScreenShare()
         }
     }
 
@@ -253,26 +249,24 @@ class SplashController: ObservableObject {
     }
 
     func getAvailableMics() -> [AudioDeviceWrapper] {
-        let mics = self.meeting?.getMics() ?? []
-        return mics.map { mic in
-            let isSelected = AVAudioSession.sharedInstance().currentRoute
-                .outputs.contains(where: {
-                    $0.portType.rawValue == mic.deviceType
-                })
-            return AudioDeviceWrapper(
-                deviceName: mic.deviceName,
-                isSelected: isSelected
+        let selectedMicId = VideoSDK.getSelectedAudioDevice()?.deviceId
+        return VideoSDK.getMics().map { mic in
+            AudioDeviceWrapper(
+                deviceName: mic.label,
+                isSelected: mic.deviceId == selectedMicId
             )
         }
     }
 
     func changeMic(to deviceName: String) {
-        self.meeting?.changeMic(selectedDevice: deviceName)
+        guard let mic = VideoSDK.getMics().first(where: { $0.label == deviceName })
+        else { return }
+        Task { try? await self.meeting?.changeMic(deviceId: mic.deviceId) }
     }
 }
 
-extension SplashController: MeetingEventListener {
-    func onMeetingJoined() {
+extension SplashController: RoomEventListener {
+    func onRoomJoined() {
         DispatchQueue.main.async {
             self.localParticipant = self.meeting?.localParticipant
 
@@ -284,7 +278,7 @@ extension SplashController: MeetingEventListener {
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 if (self.meeting?.participants.count ?? 0) > 1 {
-                    self.meeting?.leave()
+                    Task { try? await self.meeting?.leave() }
                     self.isMaxParticipantsCapacityErrorShowing.toggle()
                 } else {
                     self.localParticipant?.addEventListener(self)
@@ -298,7 +292,7 @@ extension SplashController: MeetingEventListener {
             let isExist = self.participants.keys.contains(participant.id)
             if !isExist {
                 self.participants[participant.id] = participant
-                if participant.isAgent {
+                if participant.isAgent() {
                     participant.addEventListener(self)
                 }
             }
@@ -308,7 +302,7 @@ extension SplashController: MeetingEventListener {
     func onParticipantLeft(_ participant: Participant, reason: LeaveReason) {
         DispatchQueue.main.async {
             participant.removeEventListener(self)
-            if participant.isAgent {
+            if participant.isAgent() {
                 self.showAlert(
                     message:
                         "Agent has been left the meeting. Leaving the meeting now."
@@ -318,9 +312,9 @@ extension SplashController: MeetingEventListener {
         }
     }
 
-    func onMeetingLeft(reason: LeaveReason) {
+    func onRoomLeft(reason: LeaveReason) {
         DispatchQueue.main.async {
-            if reason == .meetingEndApi {
+            if reason == .MEETING_END_API {
                 self.localParticipant?.removeEventListener(self)
                 self.meeting?.removeEventListener(self)
                 self.cleanResources()
@@ -330,8 +324,8 @@ extension SplashController: MeetingEventListener {
         }
     }
 
-    func onSpeakerChanged(participantId: String?) {
-        self.activeSpeakerId = participantId
+    func onSpeakerChanged(activeSpeakerId: String?) {
+        self.activeSpeakerId = activeSpeakerId
     }
 
     func onError(error: VideoSDKError) {
@@ -351,16 +345,16 @@ extension SplashController: MeetingEventListener {
 
 extension SplashController: ParticipantEventListener {
     func onStreamEnabled(
-        _ stream: MediaStream,
+        _ stream: RTCStream,
         forParticipant participant: Participant
     ) {
         print(
             "OnStream Enabled: \(stream.kind) of participant: \(participant.displayName)"
         )
-        if stream.kind == .state(value: .video) {
+        if stream.kind == .video {
             if participant.isLocal {
                 localVideoTrack = stream.track as? RTCVideoTrack
-            } else if participant.isAgent && !participant.isLocal {
+            } else if participant.isAgent() && !participant.isLocal {
                 agentVideoTrack = stream.track as? RTCVideoTrack
             }
         } else if stream.kind == .share {
@@ -371,16 +365,16 @@ extension SplashController: ParticipantEventListener {
     }
 
     func onStreamDisabled(
-        _ stream: MediaStream,
+        _ stream: RTCStream,
         forParticipant participant: Participant
     ) {
         print(
             "OnStream Disabled: \(stream.kind) of participant: \(participant.displayName)"
         )
-        if stream.kind == .state(value: .video) {
+        if stream.kind == .video {
             if participant.isLocal {
                 localVideoTrack = nil
-            } else if participant.isAgent && !participant.isLocal {
+            } else if participant.isAgent() && !participant.isLocal {
                 agentVideoTrack = nil
             }
         } else if stream.kind == .share {

@@ -5,10 +5,8 @@
 //  Created by Parth Asodariya on 12/03/26.
 //
 
-internal import Mediasoup
 import SwiftUI
 import VideoSDKRTC
-import WebRTC
 
 struct TileView: View {
     @ObservedObject var controller: SplashController
@@ -153,7 +151,7 @@ class VideoView: UIView {
 // Component to show the video stream
 struct ParticipantView: UIViewRepresentable, Equatable {
     static func == (lhs: ParticipantView, rhs: ParticipantView) -> Bool {
-        return lhs.track == rhs.track && lhs.height == rhs.height
+        return lhs.track === rhs.track && lhs.height == rhs.height
             && lhs.width == rhs.width
     }
 
@@ -170,7 +168,7 @@ struct ParticipantView: UIViewRepresentable, Equatable {
         uiView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         uiView.videoView.frame = uiView.bounds
 
-        if context.coordinator.currentTrack == track { return }
+        if context.coordinator.currentTrack === track { return }
 
         if let oldTrack = context.coordinator.currentTrack {
             oldTrack.remove(uiView.videoView)

@@ -62,7 +62,7 @@ struct ParticipantTilesView: View {
                         width: geometry.size.width * 0.27,
                         height: geometry.size.height * 0.26,
                         onSwitchCamera: {
-                            controller.meeting?.switchWebcam()
+                            Task { try? await controller.meeting?.changeCam() }
                         }
                     )
                     .padding(
@@ -89,7 +89,7 @@ struct ParticipantTilesView: View {
                         width: geometry.size.width,
                         height: geometry.size.height - Responsive.height(80),
                         onSwitchCamera: {
-                            controller.meeting?.switchWebcam()
+                            Task { try? await controller.meeting?.changeCam() }
                         }
                     )
                     .mask(
@@ -122,7 +122,7 @@ struct ParticipantTilesView: View {
                         width: geometry.size.width * 0.27,
                         height: geometry.size.height * 0.26,
                         onSwitchCamera: {
-                            controller.meeting?.switchWebcam()
+                            Task { try? await controller.meeting?.changeCam() }
                         }
                     )
                     .padding(
@@ -163,7 +163,7 @@ struct ParticipantTilesView: View {
                                 width: geometry.size.width * 0.27,
                                 height: geometry.size.height * 0.26,
                                 onSwitchCamera: {
-                                    controller.meeting?.switchWebcam()
+                                    Task { try? await controller.meeting?.changeCam() }
                                 }
                             )
                             .padding(.trailing, Responsive.width(6))

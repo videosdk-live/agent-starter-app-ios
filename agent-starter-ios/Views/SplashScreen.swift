@@ -130,9 +130,9 @@ struct SplashScreen: View {
                         },
                         onMicClicked: {
                             if controller.isMicMuted {
-                                controller.meeting?.unmuteMic()
+                                Task { try? await controller.meeting?.unmuteMic() }
                             } else {
-                                controller.meeting?.muteMic()
+                                Task { try? await controller.meeting?.muteMic() }
                             }
                             controller.isMicMuted.toggle()
                         },
@@ -157,9 +157,9 @@ struct SplashScreen: View {
                         },
                         onCameraClicked: {
                             if controller.isCameraOn {
-                                controller.meeting?.disableWebcam()
+                                Task { try? await controller.meeting?.disableCam() }
                             } else {
-                                controller.meeting?.enableWebcam()
+                                Task { try? await controller.meeting?.enableCam() }
                             }
                             controller.isCameraOn.toggle()
                         },
